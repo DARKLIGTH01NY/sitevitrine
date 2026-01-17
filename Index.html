@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zangi Pro - Global</title>
+    <style>
+        :root { --bg: #0b141a; --sidebar: #111b21; --panel: #202c33; --green: #00a884; --my-msg: #005c4b; --text: #e9edef; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .hidden { display: none !important; }
+        
+        /* Estilo idêntico ao index2 */
+        .auth-card { background: var(--sidebar); padding: 30px; border-radius: 12px; width: 90%; max-width: 350px; text-align: center; border: 1px solid #222; }
+        h2 { color: var(--green); margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; background: #2a3942; border: none; border-radius: 8px; color: white; box-sizing: border-box; outline: none; }
+        button { width: 100%; padding: 12px; background: var(--green); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        
+        #app-interface { width: 100%; height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+        .header { padding: 15px; background: var(--panel); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #111b21; }
+        #chat-window { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg-box { padding: 10px 15px; border-radius: 10px; max-width: 75%; font-size: 15px; word-wrap: break-word; }
+        .msg-remote { background: var(--panel); align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-me { background: var(--my-msg); align-self: flex-end; border-bottom-right-radius: 2px; }
+        
+        .msg-name { font-size: 12px; color: var(--green); font-weight: bold; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-add { background: #34b7f1; border: none; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; }
+
+        .btn-nav { background: var(--green); color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; }
+        .input-area { padding: 15px; background: var(--panel); display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="auth-section" class="auth-card">
+    <h2 id="auth-title">Zangi Pro</h2>
+    <div id="reg-fields" class="hidden">
+        <input type="text" id="reg-nome" placeholder="Seu nome">
+    </div>
+    <input type="email" id="auth-email" placeholder="E-mail">
+    <input type="password" id="auth-senha" placeholder="Senha">
+    <button onclick="handleAuth()" id="btn-auth">Entrar</button>
+    <p onclick="toggleMode()" id="toggle-text" style="color:#8696a0; font-size:13px; cursor:pointer; margin-top:15px;">Não tem conta? Crie uma</p>
+</div>
+
+<div id="app-interface" class="hidden">
+    <div class="header">
+        <div style="font-weight:bold">🌎 Chat Global</div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <a href="index2.html" class="btn-nav">PRIVADO</a>
+            <button onclick="logout()" style="width:auto; background:#ea0038; padding:8px">Sair</button>
+        </div>
+    </div>
+    <div id="chat-window"></div>
+    <div class="input-area">
+        <input type="text" id="msg-input" placeholder="Mensagem..." onkeypress="if(event.key==='Enter') enviarMensagem()">
+        <button onclick="enviarMensagem()" style="width:auto; padding:0 20px">➤</button>
+    </div>
+</div>
+
+<script>
+    const API = "https://script.google.com/macros/s/AKfycbyc-lO69WKiAHA7DxDZGNejLrfTkAEFSxTUSFdih7emRNRoh0meGAaTafg4kwSwiRJC5g/exec";
+    let currentUser = JSON.parse(localStorage.getItem('zangi_user'));
+    let isLoginMode = true;
+
+    if(currentUser) mostrarChat();
+
+    function toggleMode() {
+        isLoginMode = !isLoginMode;
+        document.getElementById('auth-title').innerText = isLoginMode ? "Zangi Pro" : "Criar Conta";
+        document.getElementById('btn-auth').innerText = isLoginMode ? "Entrar" : "Cadastrar";
+        document.getElementById('reg-fields').classList.toggle('hidden');
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('auth-email').value.trim().toLowerCase();
+        const senha = document.getElementById('auth-senha').value.trim();
+        const nome = document.getElementById('reg-nome').value.trim();
+        const btn = document.getElementById('btn-auth');
+
+        if (!email || !senha) return alert("Preencha os campos!");
+        btn.disabled = true;
+        btn.innerText = "Processando...";
+
+        try {
+            const res = await fetch(`${API}?sheet=users`);
+            const users = await res.json();
+
+            if (isLoginMode) {
+                const user = users.find(u => String(u.email).toLowerCase() === email && String(u.senha) === senha);
+                if (user) {
+                    localStorage.setItem('zangi_user', JSON.stringify(user));
+                    location.reload();
+                } else {
+                    alert("Usuário não encontrado!");
+                }
+            } else {
+                if (!nome) return alert("Digite o nome!");
+                const newUser = { id: "U" + Math.floor(Math.random()*99999), nome, email, senha };
+                
+                await fetch(API, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({ sheet: "users", data: [newUser] })
+                });
+                alert("Conta criada! Agora faça o login.");
+                location.reload();
+            }
+        } catch (e) {
+            alert("Erro de conexão. Verifique se o Script está como 'Qualquer pessoa'.");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = isLoginMode ? "Entrar" : "Cadastrar";
+        }
+    }
+
+    function mostrarChat() {
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('app-interface').classList.remove('hidden');
+        carregarGeral();
+        setInterval(carregarGeral, 4000);
+    }
+
+    async function carregarGeral() {
+        try {
+            const res = await fetch(`${API}?sheet=messages_global`);
+            const data = await res.json();
+            const win = document.getElementById('chat-window');
+            win.innerHTML = data.map(m => {
+                const isMe = String(m.u_id) === String(currentUser.id);
+                return `
+                    <div class="msg-box ${isMe ? 'msg-me' : 'msg-remote'}">
+                        <div class="msg-name">
+                            ${m.nome}
+                            ${!isMe ? `<button class="btn-add" onclick="addContato('${m.u_id}','${m.nome}')">+ ADD</button>` : ''}
+                        </div>
+                        ${m.mensagem}
+                    </div>
+                `;
+            }).join('');
+            win.scrollTop = win.scrollHeight;
+        } catch(e) {}
+    }
+
+    async function addContato(id, nome) {
+        await fetch(API, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ 
+                sheet: "contatos", 
+                data: [{ dono_id: String(currentUser.id), contato_id: String(id), contato_nome: nome }] 
+            })
+        });
+        alert(nome + " adicionado!");
+    }
+
+    async function enviarMensagem() {
+        const input = document.getElementById('msg-input');
+        const txt = input.value.trim();
+        if(!txt) return;
+        input.value = "";
+
+        await fetch(API, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ 
+                sheet: "messages_global", 
+                data: [{ nome: currentUser.nome, u_id: String(currentUser.id), mensagem: txt, created_at: new Date().toISOString() }] 
+            })
+        });
+        carregarGeral();
+    }
+
+    function logout() {
+        localStorage.removeItem('zangi_user');
+        location.reload();
+    }
+</script>
+</body>
+          </html>
